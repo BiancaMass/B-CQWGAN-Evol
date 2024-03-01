@@ -1,0 +1,7 @@
+# Directories
+output/
+input/
+**/__pycache__/
+
+# Specific files
+.DS_Store
