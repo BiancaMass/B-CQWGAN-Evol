@@ -1,7 +1,7 @@
 # B-CQWGAN-Evol
 
-### Running on DSDI GPU
-To run on DSDI GPU, I had to change the pytorch and torchvision versions.
+### Running on DSRI GPU
+To run on DSRI GPU, I had to change the pytorch and torchvision versions.
 While I found this solution, I was running on `GPU 0: NVIDIA H100 PCIe (UUID: GPU-023a2d83-c6a4-abe9-f546-d5957c1427e2)`
 1. Add an `\input` folder and an input file (`.qasm`).
 
@@ -9,7 +9,7 @@ While I found this solution, I was running on `GPU 0: NVIDIA H100 PCIe (UUID: GP
 - `pip install -r requirements.txt`
 - `pip install qiskit`
 
-3. Then, to change pytorch and torchvision to te correct versions to be compatible with the DSDI 
+3. Then, to change pytorch and torchvision to te correct versions to be compatible with the DSRI 
    GPU:
  - `pip3 uninstall torch`
 
