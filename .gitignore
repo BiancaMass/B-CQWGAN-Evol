@@ -1,6 +1,7 @@
 # Directories
 output/
 input/
+datasets/
 venv-b-cqwgan-evol/
 **/__pycache__/
 .idea/
