@@ -19,6 +19,6 @@ if __name__ == "__main__":
                    qasm_file_path=qasm_file_path,
                    batch_size=25,
                    n_epochs=50,
-                   image_size=25
+                   image_size=28
                    )
 
