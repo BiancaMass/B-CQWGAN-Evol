@@ -14,8 +14,9 @@ from utils.wgan import compute_gradient_penalty
 from models.QGCC_imported import PQWGAN_CC_imported
 
 
-def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: int, qasm_file_path: str,
-                   batch_size: int = 25, n_epochs: int = 50, image_size: int = 28):
+def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: bool,
+                   qasm_file_path:str, batch_size: int = 25, n_epochs: int = 50,
+                   image_size: int = 28):
     """
     Trains the generator and discriminator of the PQWGAN, using an imported circuit structure.
 
@@ -23,21 +24,17 @@ def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: i
     :param dataset_str: str. The name of the dataset to train on, e.g., 'mnist'.
     :param batch_size: int. The size of each batch of data.
     :param n_epochs: int. The number of epochs to train the model.
-    :param out_folder: The directory where the training outputs (like models and logs) will be saved.
-    :type out_folder: str
-    :param randn: Seed for random number generation, used to ensure reproducibility.
-    :type randn: int
-    :param qasm_file_path: The file path to the QASM (Quantum Assembly Language) file that defines the quantum circuit for the PQWGAN.
-    :type qasm_file_path: str
-    :return: This function does not return a value.
-    :rtype: None
+    :param out_folder: str. The directory where the training outputs will be saved.
+    :param randn: bool. Whether to draw the latent vector from uniform or normal distribution.
+    :param qasm_file_path: str. file path to the QASM file to import the circuit for the generator.
+    :return: None.
     """
     classes = list(set([int(digit) for digit in classes_str]))
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
     n_epochs = n_epochs
-    image_size = 28  # number of pixels. If one number, image assumed to be square.
+    image_size = image_size
     channels = 1
     if dataset_str == "mnist":
         dataset = select_from_dataset(load_mnist(image_size=image_size), 1000, classes)

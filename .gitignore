@@ -3,6 +3,7 @@ output/
 input/
 venv-b-cqwgan-evol/
 **/__pycache__/
+.idea/
 
 
 # Specific files
