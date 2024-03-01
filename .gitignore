@@ -1,7 +1,9 @@
 # Directories
 output/
 input/
+venv-b-cqwgan-evol/
 **/__pycache__/
+
 
 # Specific files
 .DS_Store
