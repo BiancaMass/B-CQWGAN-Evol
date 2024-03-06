@@ -7,12 +7,17 @@
 To run on DSRI GPU, I had to change the pytorch and torchvision versions.
 While I found this solution, I was running on `GPU 0: NVIDIA H100 PCIe (UUID: GPU-023a2d83-c6a4-abe9-f546-d5957c1427e2)`
 
-1. In the terminal:
+1. Make a venv:
+`python3.10 -m venv venv1`
+2. Activate it:
+`source venv1/bin/activate`
+
+3. In the terminal:
 - `pip install -r requirements.txt`
 - `pip install qiskit`
 - `pip install pennylane`
 
-2. Then, to change pytorch and torchvision to te correct versions to be compatible with the DSRI 
+4. Then, to change pytorch and torchvision to te correct versions to be compatible with the DSRI 
    GPU:
  - `pip3 uninstall torch`
 
