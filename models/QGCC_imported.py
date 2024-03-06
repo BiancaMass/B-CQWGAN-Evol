@@ -88,14 +88,21 @@ class PQWGAN_CC_imported():
             #     [nn.Parameter(torch.tensor(value, dtype=torch.float32, requires_grad=True))
             #      for value in initial_params])
 
-            self.params = nn.ParameterList(
-                [nn.Parameter(torch.tensor(initial_params, dtype=torch.float32, requires_grad=True))
-                 for _ in range(4)]
-            )
+            self.num_layers = 1 # TODO: integrate later (and add it as input arguemtn)
+            # self.params = nn.ParameterList(
+            #     [nn.Parameter(torch.tensor(initial_params, dtype=torch.float32, requires_grad=True))
+            #      for _ in range(4)]
+            # )
+            self.params = nn.ParameterList([
+                nn.Parameter(torch.tensor(param, dtype=torch.float32, requires_grad=True))
+                if isinstance(param, list) else
+                nn.Parameter(torch.tensor([param], dtype=torch.float32, requires_grad=True))
+                for param in initial_params
+            ])
 
             self.qnode = qml.QNode(func=self.pennylane_circuit,  # defined below
-                                   device=self.q_device,  # the pennylane device initialized above
-                                   interface="torch")  # The interface for classical backpropagation
+                                       device=self.q_device,  # the pennylane device initialized above
+                                       interface="torch")  # The interface for classical backpropagation
 
 
         def importing_circuit(self):
@@ -118,7 +125,9 @@ class PQWGAN_CC_imported():
             initial_params = []
             for instr, _, _ in qiskit_circuit.data:
                 if instr.name.lower() in ["rx", "ry", "rz", "rxx", "ryy", "rzz"]:
-                    initial_params.extend([param for param in instr.params])
+                    initial_params.append(instr.params[0])
+                elif instr.name.lower() in ["u"]:
+                    initial_params.append(instr.params)
 
             return qiskit_circuit, n_qubits, initial_params
 
@@ -141,34 +150,41 @@ class PQWGAN_CC_imported():
                 qml.RY(angle, wires=i)
 
             # Map Qiskit gates to PennyLane gates
-            for layer in range(4):
-                param_idx = 0  # Initialize parameter index
-                for instr, qubits, _ in self.qiskit_circuit.data:  # Instructions, qubits, empty
-                    name = instr.name.lower()  # gate names all lower case
-                    wires = [q._index for q in qubits]  # wires for each single and double gate
+            param_idx = 0  # Initialize parameter index
+            for instr, qubits, _ in self.qiskit_circuit.data:  # Instructions, qubits, empty
+                name = instr.name.lower()  # gate names all lower case
+                wires = [q._index for q in qubits]  # wires for each single and double gate
 
-                    if name in ["rx", "ry", "rz"]:
-                        # print(f'rx,ry,rz. Found gate {name} with param {instr.params} on qubit {wires}')
-                        getattr(qml, name.upper())(params[layer][param_idx], wires=wires)
-                        param_idx += 1
-                    elif name == "rxx":
-                        # print(f'RXX. Found gate {name} with param {instr.params} on qubit '
-                        #       f'{wires[0]},{wires[1]}')
-                        RXX(params[layer][param_idx], wires=[wires[0], wires[1]])
-                        param_idx += 1
-                    elif name == "ryy":
-                        # print(f'RYY. Found gate {name} with param {instr.params} on qubit '
-                        #       f'{wires[0]},{wires[1]}')
-                        RYY(params[layer][param_idx], wires=[wires[0], wires[1]])
-                        param_idx += 1
-                    elif name == "rzz":
-                        # print(f'RZZ. Found gate {name} with param {instr.params} on qubit '
-                        #       f'{wires[0]},{wires[1]}')
-                        RZZ(params[layer][param_idx], wires=[wires[0], wires[1]])
-                        param_idx += 1
-                    elif name == "h":
-                        # print(f'h. Found gate {name} on qubit {wires}')
-                        qml.Hadamard(wires=wires[0])  # hadamard has no parameters
+                if name in ["rx", "ry", "rz"]:
+                    print(f'rx,ry,rz. Found gate {name} with param {instr.params} on qubit {wires}')
+                    getattr(qml, name.upper())(params[param_idx], wires=wires)
+                    param_idx += 1
+                elif name == "rxx":
+                    print(f'RXX. Found gate {name} with param {instr.params} on qubit '
+                          f'{wires[0]},{wires[1]}')
+                    RXX(params[param_idx], wires=[wires[0], wires[1]])
+                    param_idx += 1
+                elif name == "ryy":
+                    print(f'RYY. Found gate {name} with param {instr.params} on qubit '
+                          f'{wires[0]},{wires[1]}')
+                    RYY(params[param_idx], wires=[wires[0], wires[1]])
+                    param_idx += 1
+                elif name == "rzz":
+                    print(f'RZZ. Found gate {name} with param {instr.params} on qubit '
+                          f'{wires[0]},{wires[1]}')
+                    RZZ(params[param_idx], wires=[wires[0], wires[1]])
+                    param_idx += 1
+                elif name == "u":
+                    qml.Rot(params[param_idx][0],
+                            params[param_idx][1],
+                            params[param_idx][2],
+                            wires=wires)
+                    param_idx += 1
+                elif name == "cx":
+                    qml.CNOT(wires=[wires[0], wires[1]])
+                elif name == "h":
+                    # print(f'h. Found gate {name} on qubit {wires}')
+                    qml.Hadamard(wires=wires[0])  # hadamard has no parameters
 
             return qml.probs(wires=range(self.n_qubits))
 

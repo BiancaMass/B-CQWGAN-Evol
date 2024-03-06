@@ -9,12 +9,6 @@ class ConversionQiskitPenny:
     """
     Converts a Qiskit quantum circuit into a PennyLane quantum circuit. It supports RX, RY, RZ,
     RXX, RYY, RZZ, and H gates. Additional gates can be added with modifications.
-
-    Attributes:
-        n_qubits (int): Number of qubits in the quantum circuit.
-        dev (qml.Device): PennyLane device for simulation.
-        # TODO might change  to tensor ??
-        latent_vector (np.ndarray): Vector to encode into the circuit's initial state.
     """
     def __init__(self, quantum_circuit: QuantumCircuit, latent_vector):
         """
@@ -22,13 +16,11 @@ class ConversionQiskitPenny:
 
         Parameters:
             quantum_circuit (QuantumCircuit): The Qiskit circuit to convert.
-            # TODO: might change to tensor ??
             latent_vector (np.ndarray): The latent vector to encode into the quantum state.
         """
         self.qc = quantum_circuit
         self.n_qubits = quantum_circuit.num_qubits
         self.latent_vector = latent_vector
-        # TODO maybe better as an argument to input, so it can be defined outside the class
         self.dev = qml.device("default.qubit", wires=self.n_qubits) # Initialize PennyLane device
 
     def variational_block(self):
@@ -39,13 +31,6 @@ class ConversionQiskitPenny:
         Returns:
             function: A PennyLane qnode function representing the converted circuit.
         """
-        # TODO: delete after finishing development
-        # # Extract parameters from the Qiskit circuit
-        # initial_params = []
-        # for instr, _, _ in self.qc.data:
-        #     if instr.name.lower() in ["rx", "ry", "rz", "rxx", "ryy", "rzz"]:
-        #         initial_params.extend([param for param in instr.params])
-
         # print(f'Initial parameters: {initial_params}')
         @qml.qnode(self.dev)
         def circuit(latent_vector):
@@ -76,6 +61,10 @@ class ConversionQiskitPenny:
                 elif name == "h":
                     # print(f'h. Found gate {name} on qubit {wires}')
                     qml.Hadamard(wires=wires[0])  # hadamard has no parameters
+                elif name == "cx":
+                    qml.CNOT(wires=[wires[0], wires[1]])
+                elif name == "u":
+                    qml.Rot(instr.params[0], instr.params[1], instr.params[2], wires=wires)
 
             return qml.probs(wires=range(self.n_qubits))
 

@@ -1,15 +1,11 @@
-import os
-import math
-from datetime import datetime
-
+import training_configs as config
 from train_imported import train_imported
 
-current_time = datetime.now()
-string_time = current_time.strftime("%Y-%m-%d-%H%M")
-output_dir = os.path.join(f"./output/0_imported_circuits/{string_time}")
+output_dir = config.OUTPUT_DIR
+qasm_file_path = config.QASM_FILE_PATH
 
-qasm_file_path= "/Users/bmassacci/main_folder/maastricht/academics/quantum_thesis/scripts/B-WGAN" \
-                "-Evol/input/final_best_ciruit_maximize_3.qasm"
+print(f'Calling circuit with the following params:\n'
+      f'output_dir = {output_dir}\ninput_circuit = {qasm_file_path}')
 
 if __name__ == "__main__":
     train_imported(classes_str="01",
@@ -21,4 +17,3 @@ if __name__ == "__main__":
                    n_epochs=50,
                    image_size=28
                    )
-

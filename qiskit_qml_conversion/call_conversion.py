@@ -27,8 +27,8 @@ device = torch.device("cpu")
 
 
 # Assuming you have the path to your QASM file
-qasm_file_path = '/Users/bmassacci/main_folder/maastricht/academics/quantum_thesis/scripts/PQWGAN' \
-                 '/input/final_best_ciruit_maximize_2.qasm'
+qasm_file_path = "/Users/bmassacci/main_folder/maastricht/academics/quantum_thesis/scripts/B-WGAN" \
+                 "-Evol/input/final_best_ciruit_U_CNOT.qasm"
 
 # Read the QASM file
 with open(qasm_file_path, 'r') as file:
