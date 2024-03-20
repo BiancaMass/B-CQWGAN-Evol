@@ -21,7 +21,7 @@ class ConversionQiskitPenny:
         self.qc = quantum_circuit
         self.n_qubits = quantum_circuit.num_qubits
         self.latent_vector = latent_vector
-        self.dev = qml.device("default.qubit", wires=self.n_qubits) # Initialize PennyLane device
+        self.dev = qml.device("default.qubit", wires=self.n_qubits)  # Initialize PennyLane device
 
     def variational_block(self):
         """"

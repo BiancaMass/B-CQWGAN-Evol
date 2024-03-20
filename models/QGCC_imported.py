@@ -20,13 +20,15 @@ an evolutionary algorithm.
 
 
 class PQWGAN_CC_imported():
-    def __init__(self, image_size, channels, n_ancillas, qasm_file_path):
+    def __init__(self, image_size, channels, n_sub_generators, n_ancillas, qasm_file_path):
         """
         Initializes the PQWGAN_CC_imported class with a quantum generator (imported from a .qasm
         file) and classical discriminator. Translates the file from qiskit to pennylane and sets
         up the class for training of the generator (quantum) and discriminator (classical).
         Args:
             image_size (int): The size of the input image (which is assumed to be squared)
+            channels (int): Number of color channels (1 for MNIST)
+            n_generators (int): Number of sub-generators for the quantum generator (one per patch)
             n_ancillas (int): The number of ancilla qubits in the quantum generator.
             patch_shape (tuple): The shape of the patch in the output image.
             qasm_file_path (str): The file path to the QASM file.
@@ -35,7 +37,10 @@ class PQWGAN_CC_imported():
         self.image_shape = (channels, image_size, image_size)
         self.critic = self.ClassicalCritic(self.image_shape)
         self.qasm_file_path = qasm_file_path
-        self.generator = self.QuantumGeneratorImported(self.image_shape, self.qasm_file_path, n_ancillas)
+        self.generator = self.QuantumGeneratorImported(image_shape=self.image_shape,
+                                                       qasm_file_path=self.qasm_file_path,
+                                                       n_ancillas=n_ancillas,
+                                                       n_sub_generators=n_sub_generators)
 
     class ClassicalCritic(nn.Module):  # class torch.nn.Module because classical
         def __init__(self, image_shape):
@@ -65,13 +70,14 @@ class PQWGAN_CC_imported():
 
 
     class QuantumGeneratorImported(nn.Module):
-        def __init__(self, image_shape, qasm_file_path, n_ancillas):
+        def __init__(self, image_shape, qasm_file_path, n_ancillas, n_sub_generators):
             """Initialize the QuantumGenerator class.
 
             Args:
                 image_shape (tuple): The shape of the output image. A tuple (channels, height, width).
                 qasm_file_path (str): The path to the QASM file that contains the quantum circuit.
                 n_ancillas (int): The number of ancillary qubits included in the quantum circuit.
+                n_sub_generators (int): The number of sub generators (one per patch)
             Returns:
                 None
             """
@@ -83,27 +89,33 @@ class PQWGAN_CC_imported():
             self.qiskit_circuit, self.n_qubits, initial_params = self.importing_circuit()
             self.q_device = qml.device("default.qubit", wires=self.n_qubits)
             self.n_ancillas = n_ancillas
+            self.n_sub_generators = n_sub_generators
 
-            # self.params = nn.ParameterList(
-            #     [nn.Parameter(torch.tensor(value, dtype=torch.float32, requires_grad=True))
-            #      for value in initial_params])
 
-            self.num_layers = 1 # TODO: integrate later (and add it as input arguemtn)
-            # self.params = nn.ParameterList(
-            #     [nn.Parameter(torch.tensor(initial_params, dtype=torch.float32, requires_grad=True))
-            #      for _ in range(4)]
-            # )
-            self.params = nn.ParameterList([
-                nn.Parameter(torch.tensor(param, dtype=torch.float32, requires_grad=True))
-                if isinstance(param, list) else
-                nn.Parameter(torch.tensor([param], dtype=torch.float32, requires_grad=True))
-                for param in initial_params
-            ])
+            # self.params = [
+            #     nn.ParameterList([
+            #         nn.Parameter(torch.tensor(param, dtype=torch.float32, requires_grad=True))
+            #         if isinstance(param, list) else
+            #         nn.Parameter(torch.tensor([param], dtype=torch.float32, requires_grad=True))
+            #         for param in initial_params
+            #     ]) for _ in range(n_sub_generators)
+            # ]
+
+            # Initialize parameters for each sub-generator
+            for idx in range(n_sub_generators):
+                param_list = nn.ParameterList([
+                    nn.Parameter(torch.tensor(param, dtype=torch.float32, requires_grad=True))
+                    if isinstance(param, list) else
+                    nn.Parameter(torch.tensor([param], dtype=torch.float32, requires_grad=True))
+                    for param in initial_params
+                ])
+                setattr(self, f'params_{idx}', param_list)
+
+            self.num_layers = 1  # Placeholder for future integration
 
             self.qnode = qml.QNode(func=self.pennylane_circuit,  # defined below
-                                       device=self.q_device,  # the pennylane device initialized above
-                                       interface="torch")  # The interface for classical backpropagation
-
+                                   device=self.q_device,  # the pennylane device initialized above
+                                   interface="torch")  # The interface for classical backpropagation
 
         def importing_circuit(self):
             """
@@ -130,7 +142,6 @@ class PQWGAN_CC_imported():
                     initial_params.append(instr.params)
 
             return qiskit_circuit, n_qubits, initial_params
-
 
         def pennylane_circuit(self, latent_vector, params):
             """
@@ -198,12 +209,34 @@ class PQWGAN_CC_imported():
             :returns: torch.Tensor. Output tensor (image or image patch).
             """
             # Assuming x is a batch of latent vectors
-            images = []
-            for latent_vector in x:
-                image = self.partial_trace_and_postprocess(latent_vector, self.params)
-                images.append(image)
-            output_images = torch.stack(images).view(-1, *self.image_shape)
-            return output_images.float()
+
+            image_pixels = self.image_shape[2] ** 2
+
+            pixels_per_patch = image_pixels // self.n_sub_generators
+
+            output_images = torch.Tensor(x.size(0), 0).to(x.device)
+            for idx in range(self.n_sub_generators):  # Loop among each sub_generator
+                sub_generator_param = getattr(self, f'params_{idx}')
+                patches = torch.Tensor(0, pixels_per_patch).to(x.device)  # to store the patches
+                # Generate patches for each item in x, the latent vector (input tensor)
+                for latent_vector in x:
+                    sub_generator_out = self.partial_trace_and_postprocess(latent_vector,
+                                                                           sub_generator_param).float().unsqueeze(0)
+                    sub_generator_out = sub_generator_out[:, :pixels_per_patch]
+                    patches = torch.cat((patches, sub_generator_out))
+                output_images = torch.cat((output_images, patches), 1)
+
+            final_out = output_images.view(output_images.shape[0], *self.image_shape).to(
+                x.device)
+
+            return final_out
+
+            # images = []
+            # for latent_vector in x:
+            #     image = self.partial_trace_and_postprocess(latent_vector, self.params)
+            #     images.append(image)
+            # output_images = torch.stack(images).view(-1, *self.image_shape)
+            # return output_images.float()
 
 
 
@@ -225,8 +258,8 @@ class PQWGAN_CC_imported():
 
             # Normalise image between [-1, 1] (why not 0,1??)
             post_processed_patch = ((post_measurement_probs / torch.max(post_measurement_probs)) - 0.5) * 2
-            total_pixels = self.image_shape[1] * self.image_shape[2]
-            post_processed_patch = post_processed_patch[:total_pixels]
+            # total_pixels = self.image_shape[1] * self.image_shape[2]
+            # post_processed_patch = post_processed_patch[:total_pixels]
             return post_processed_patch  #.to(latent_vector.device)
 
 

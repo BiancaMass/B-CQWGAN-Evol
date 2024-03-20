@@ -3,6 +3,7 @@ import argparse
 import math
 import numpy as np
 import torch
+import csv
 # import torch_directml #directml does not support complex data types
 from torch.utils.data import DataLoader
 from torch.utils.data import DataLoader
@@ -15,13 +16,14 @@ from models.QGCC_imported import PQWGAN_CC_imported
 
 
 def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: bool,
-                   qasm_file_path:str, batch_size: int = 25, n_epochs: int = 50,
+                   qasm_file_path:str, metadata_file_path, batch_size: int = 25, n_epochs: int = 50,
                    image_size: int = 28):
     """
     Trains the generator and discriminator of the PQWGAN, using an imported circuit structure.
 
     :param classes_str: str. Classes of images to generate, e.g., '01' for MNIST.
     :param dataset_str: str. The name of the dataset to train on, e.g., 'mnist'.
+    :param metadata_file_path: str. File with metadata for the circuit.
     :param batch_size: int. The size of each batch of data.
     :param n_epochs: int. The number of epochs to train the model.
     :param out_folder: str. The directory where the training outputs will be saved.
@@ -29,6 +31,18 @@ def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: b
     :param qasm_file_path: str. file path to the QASM file to import the circuit for the generator.
     :return: None.
     """
+    with open(metadata_file_path, mode='r', newline='') as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            variable_name = row['Variable'].lower().replace(' ', '_')
+
+            if variable_name == 'n_data_qubits':
+                n_data_qubits = int(row['Value'])
+            elif variable_name == 'n_ancilla':
+                n_ancillas = int(row['Value'])
+            elif variable_name == 'image_shape':
+                patch_shape = eval(row['Value'])  # Converts string to tuple
+
     classes = list(set([int(digit) for digit in classes_str]))
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -43,9 +57,12 @@ def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: b
     else:
         raise ValueError("Unsupported dataset")
 
-    ancillas = 1
-    n_data_qubits = 10  # TODO: hard coded, better save this in metadata file and import it there
+    ancillas = n_ancillas
+    n_data_qubits = n_data_qubits
     qubits = n_data_qubits + ancillas
+
+    n_sub_generators = int(image_size/(int(patch_shape[0])))
+
     # Default training parameters
     lr_D = 0.0002
     lr_G = 0.01
@@ -63,7 +80,10 @@ def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: b
 
     os.makedirs(out_dir, exist_ok=False)  # if dir already exists, raises an error
 
-    gan = PQWGAN_CC_imported(image_size=image_size, channels=channels, n_ancillas=ancillas,
+    gan = PQWGAN_CC_imported(image_size=image_size,
+                             channels=channels,
+                             n_sub_generators=n_sub_generators,
+                             n_ancillas=ancillas,
                              qasm_file_path=qasm_file_path)
 
     # Assign the critic (discr.) and generator models to the target device (e.g., GPU, CPU).

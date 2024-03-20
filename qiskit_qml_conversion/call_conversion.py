@@ -28,7 +28,7 @@ device = torch.device("cpu")
 
 # Assuming you have the path to your QASM file
 qasm_file_path = "/Users/bmassacci/main_folder/maastricht/academics/quantum_thesis/scripts/B-WGAN" \
-                 "-Evol/input/final_best_ciruit_U_CNOT.qasm"
+                 "-Evol/input/final_best_circuit_5_qubits.qasm"
 
 # Read the QASM file
 with open(qasm_file_path, 'r') as file:
@@ -45,7 +45,7 @@ print(f'Quantum circuit after removing the encoding layer: {qc}')
 
 # Example usage
 # latent_vector = torch.rand(n_qubits, device=device)
-latent_vector = np.random.uniform(low=0.0, high=1.0, size=11)
+latent_vector = np.random.uniform(low=0.0, high=1.0, size=qc.num_qubits)
 generator = ConversionQiskitPenny(quantum_circuit=qc, latent_vector=latent_vector)
 pennylane_circuit = generator.variational_block()
 probs = generator.get_probability_vector()
