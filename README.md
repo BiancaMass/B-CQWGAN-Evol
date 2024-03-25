@@ -9,6 +9,13 @@ While I found this solution, I was running on `GPU 0: NVIDIA H100 PCIe (UUID: GP
 
 1. Make a venv:
 `python3.10 -m venv venv1`
+   
+If it does not work because venv is not installed, run:
+`apt-get update`
+and then
+`apt install python3.10-venv`
+And then create and activate the venv
+
 2. Activate it:
 `source venv1/bin/activate`
 

@@ -70,9 +70,8 @@ def train_imported(classes_str: str, dataset_str: str, out_folder: str, randn: b
     b2 = 0.9
     latent_dim = qubits  # length of latent vector = number of qubits (incl.  ancilla(s))
     lambda_gp = 10
-    # How often to train gen and critic.E.g., if n_critic=5, train the gen every 5 critics.
-    n_critic = 5
-    sample_interval = 10
+    n_critic = 5  # how often to train generator compared to critic (e.g. every 5 times)
+    sample_interval = 10  # how often to save output images
     # Default output folder name. Change if you want to include more params.
     out_dir = f"{out_folder}/{classes_str}_{batch_size}bs"
     if randn:
